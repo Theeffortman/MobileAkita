@@ -52,6 +52,31 @@ class TaskResult(BaseModel):
     output: dict[str, Any] | str | None = None
 
 
+class AgentRun(BaseModel):
+    """One agent's contribution during a task run."""
+
+    agent_id: str
+    agent_name: str
+    status: Literal["completed", "skipped", "failed"] = "completed"
+    input_summary: str
+    output: dict[str, Any] = Field(default_factory=dict)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class OrchestrationResult(BaseModel):
+    """Full multi-agent execution trace for a task."""
+
+    task_id: str
+    status: TaskStatus
+    strategy: Literal["sequential"] = "sequential"
+    agent_count: int
+    runs: list[AgentRun] = Field(default_factory=list)
+    final_output: dict[str, Any] = Field(default_factory=dict)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class AgentInfo(BaseModel):
     """Available agent metadata."""
 

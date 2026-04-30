@@ -49,8 +49,9 @@ Honor Agent 是一款**多智能体自进化 AI 协作平台**，通过模拟人
 | 功能 | 说明 | 入口 |
 |------|------|------|
 | **Web 可视化控制台** | 在浏览器里完成健康检查、Agent 查看、任务创建、任务运行和 GitHub 分析 | `http://localhost:8000/` |
-| **任务管理 API** | 支持创建任务、列出任务、查看任务详情、运行任务 | `/api/v1/tasks` |
+| **任务管理 API** | 支持创建任务、列出任务、查看任务详情、运行多 Agent 编排任务 | `/api/v1/tasks` |
 | **Agent 能力中心** | 内置 Data Analyst、Report Generator、GitHub Intelligence 三类 Agent 元数据 | `/api/v1/agents` |
+| **多 Agent 编排器** | 按 Agent 顺序执行任务，保留每一步输入摘要、输出结果和上下文交接记录 | `src/honor_agent/orchestrator.py` |
 | **GitHub Intelligence** | 分析 GitHub 仓库，输出健康分、风险信号、正向信号和建议任务 | `/api/v1/github/analyze` |
 | **Python SDK** | 通过 `HonorAgent` 客户端调用任务和 GitHub 分析能力 | `src/honor_agent/client.py` |
 | **Android 客户端** | 原生 Android App，可连接后端、分析仓库、创建并运行演示任务 | `android/` |
@@ -65,7 +66,7 @@ Honor Agent 是一款**多智能体自进化 AI 协作平台**，通过模拟人
 - 查看当前可用 Agent 和每个 Agent 的能力标签。
 - 创建任务并选择参与任务的 Agent。
 - 查看任务列表、任务详情和任务状态。
-- 一键运行任务并查看执行结果。
+- 一键运行任务并查看完整多 Agent 执行轨迹。
 - 输入 GitHub 仓库地址，生成仓库健康分析结果。
 - 查看最近一次 API 响应日志，方便调试。
 
@@ -82,6 +83,25 @@ Honor Agent 后端基于 FastAPI，当前提供一套最小但完整的任务编
 | `/api/v1/tasks/{task_id}` | `GET` | 获取任务详情 |
 | `/api/v1/tasks/{task_id}/run` | `POST` | 运行任务 |
 | `/api/v1/github/analyze` | `POST` | 分析 GitHub 仓库 |
+
+### 🤖 多 Agent 编排
+
+任务运行时会进入顺序编排流程。每个 Agent 都会读取原始任务上下文和上一个 Agent 的输出，再产出自己的结果，并把结果交给后续 Agent。
+
+当前内置执行链可以覆盖：
+
+- `data_analyst`：读取任务参数，形成数据分析发现和交接建议。
+- `report_generator`：读取上游分析发现，生成结构化报告。
+- `github_intelligence`：读取上游报告，形成仓库维护建议。
+
+运行结果会返回完整执行轨迹：
+
+- `runs`：每个 Agent 的执行状态、输入摘要、输出内容、开始和完成时间。
+- `final_output.agent_sequence`：实际执行顺序。
+- `final_output.handoffs`：Agent 之间的上下文交接记录。
+- `final_output.latest_output`：最后一个 Agent 的输出。
+
+如果任务里传入未知 Agent，编排器会把该步骤标记为 `skipped`，继续执行后续已注册 Agent，便于调试任务配置。
 
 ### 📱 Android APK
 
@@ -114,7 +134,7 @@ GitHub Intelligence 是项目当前的核心扩展能力之一。它会解析仓
 |------|------|
 | **任务编排核心** | 用统一 Task 模型描述任务名称、描述、Agent、参数、优先级和状态 |
 | **Agent 注册中心** | 暴露可用 Agent 的 ID、名称、描述和能力标签 |
-| **执行模拟器** | 当前 MVP 可将任务从 `created` 推进到 `completed` 并返回执行摘要 |
+| **多 Agent 编排器** | 将任务从 `created` 推进到 `running` / `completed`，并返回每个 Agent 的交互轨迹 |
 | **GitHub 分析器** | 把 GitHub 仓库元数据转成健康分和维护建议 |
 | **Web 控制台** | 提供无需前端构建的浏览器操作界面 |
 | **移动端客户端** | Android App 连接同一套后端 API |
@@ -327,6 +347,7 @@ HonorAgent/
 │   ├── client.py                 # 异步 SDK 客户端
 │   ├── github_intelligence.py    # GitHub 仓库分析能力
 │   ├── models.py                 # Pydantic 数据模型
+│   ├── orchestrator.py           # 多 Agent 顺序编排器
 │   ├── server.py                 # FastAPI 应用
 │   └── static/                   # Web 可视化控制台
 ├── android/                      # 原生 Android APK 客户端

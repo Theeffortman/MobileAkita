@@ -52,6 +52,58 @@ def test_create_get_and_run_task() -> None:
     result = run_response.json()["data"]
     assert result["status"] == "completed"
     assert result["task_id"] == task["id"]
+    assert result["output"]["agent_count"] == 1
+    assert result["output"]["runs"][0]["agent_id"] == "data_analyst"
+
+
+def test_run_task_orchestrates_multiple_agents_with_handoffs() -> None:
+    client = TestClient(app)
+    create_response = client.post(
+        "/api/v1/tasks",
+        json={
+            "name": "多智能体交互验证",
+            "description": "分析数据，生成报告，并规划仓库维护动作",
+            "agents": ["data_analyst", "report_generator", "github_intelligence"],
+            "params": {
+                "data_source": "sales_db",
+                "date_range": "last_week",
+                "extra": {"github_url": "https://github.com/Theeffortman/HonorAgent"},
+            },
+        },
+    )
+    task = create_response.json()["data"]
+
+    run_response = client.post(f"/api/v1/tasks/{task['id']}/run")
+
+    assert run_response.status_code == 200
+    output = run_response.json()["data"]["output"]
+    assert output["status"] == "completed"
+    assert output["agent_count"] == 3
+    assert [run["agent_id"] for run in output["runs"]] == [
+        "data_analyst",
+        "report_generator",
+        "github_intelligence",
+    ]
+    assert output["runs"][1]["input_summary"].startswith("Received context from data_analyst")
+    assert output["runs"][2]["input_summary"].startswith("Received context from report_generator")
+    assert len(output["final_output"]["handoffs"]) == 3
+
+
+def test_run_task_skips_unknown_agents_in_trace() -> None:
+    client = TestClient(app)
+    create_response = client.post(
+        "/api/v1/tasks",
+        json={"name": "Unknown agent task", "agents": ["missing_agent", "data_analyst"]},
+    )
+    task = create_response.json()["data"]
+
+    run_response = client.post(f"/api/v1/tasks/{task['id']}/run")
+
+    assert run_response.status_code == 200
+    output = run_response.json()["data"]["output"]
+    assert output["agent_count"] == 2
+    assert output["runs"][0]["status"] == "skipped"
+    assert output["runs"][1]["status"] == "completed"
 
 
 def test_list_agents() -> None:

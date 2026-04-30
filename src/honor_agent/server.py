@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .github_intelligence import build_repo_insight, fetch_github_repo_metadata, parse_github_repo_url
 from .models import AgentInfo, ApiResponse, GitHubRepoRequest, Task, TaskCreate, TaskResult
+from .orchestrator import orchestrate_task
 
 app = FastAPI(
     title="Honor Agent",
@@ -88,16 +89,15 @@ async def run_task(task_id: str) -> ApiResponse:
         raise HTTPException(status_code=404, detail="Task not found")
 
     now = datetime.now(timezone.utc)
-    task.status = "completed"
+    task.status = "running"
     task.updated_at = now
+    orchestration = orchestrate_task(task, AGENTS)
+    task.status = "completed"
+    task.updated_at = orchestration.completed_at
     result = TaskResult(
         task_id=task.id,
         status=task.status,
-        output={
-            "summary": f"Task '{task.name}' completed by {len(task.agents)} agent(s).",
-            "agents": task.agents,
-            "completed_at": now.isoformat(),
-        },
+        output=orchestration.model_dump(mode="json"),
     )
     return ok(result.model_dump(mode="json"), "任务执行完成")
 
