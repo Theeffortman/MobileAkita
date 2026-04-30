@@ -154,39 +154,131 @@ GitHub Intelligence 是项目当前的核心扩展能力之一。它会解析仓
 
 ## 🏗️ 系统架构
 
+Honor Agent 当前采用“轻后端 + 内置控制台 + 移动端客户端”的架构。FastAPI 是唯一服务入口，Web 控制台、Android App、Python SDK 和 REST 调用都连接到同一套 API。多 Agent 编排逻辑集中在 `orchestrator.py`，服务层只负责接收请求、更新任务状态和返回结果。
+
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           Honor Agent 系统架构                          │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                        用户交互层 (UI Layer)                     │   │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐         │   │
-│  │  │  Web UI │  │  CLI   │  │   API   │  │  Mobile │         │   │
-│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘         │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                    │                                    │
-│                                    ▼                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                      业务编排层 (Orchestration Layer)            │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │   │
-│  │  │  协作引擎   │  │  工作流引擎 │  │  知识引擎   │           │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘           │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                    │                                    │
-│                                    ▼                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                        Agent 核心层 (Agent Core Layer)          │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │   │
-│  │  │  进化引擎   │  │  动作引擎   │  │  反思引擎   │           │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘           │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │   │
-│  │  │  改进引擎   │  │  优化引擎   │  │  告警引擎   │           │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘           │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                         Client Layer                               │
+│  Web Console        Android APK         Python SDK        REST/cURL │
+│  /static/*          android/            client.py         HTTP JSON │
+└───────────────┬────────────────┬────────────────┬─────────────────┘
+                │                │                │
+                └────────────────┴────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                         FastAPI Server                             │
+│  server.py                                                         │
+│  - serves Web console                                              │
+│  - exposes health, tasks, agents, GitHub analysis                  │
+│  - stores MVP task state in memory                                 │
+└─────────────────────────────┬──────────────────────────────────────┘
+                              │
+              ┌───────────────┴────────────────┐
+              ▼                                ▼
+┌───────────────────────────────┐  ┌───────────────────────────────┐
+│ Multi-Agent Orchestrator       │  │ GitHub Intelligence            │
+│ orchestrator.py                │  │ github_intelligence.py         │
+│ - sequential agent execution   │  │ - parse GitHub repo URL        │
+│ - context handoff              │  │ - fetch repo metadata          │
+│ - execution trace              │  │ - score health and risks       │
+└───────────────┬───────────────┘  └───────────────────────────────┘
+                │
+                ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                         Data Models                                │
+│  models.py                                                         │
+│  Task, TaskCreate, AgentInfo, AgentRun, OrchestrationResult,       │
+│  GitHubRepoInsight, ApiResponse                                    │
+└────────────────────────────────────────────────────────────────────┘
 ```
+
+### 架构分层
+
+| 层级 | 主要文件 | 职责 |
+|------|----------|------|
+| **客户端层** | `src/honor_agent/static/`, `android/`, `src/honor_agent/client.py` | 给用户和外部程序提供操作入口 |
+| **API 服务层** | `src/honor_agent/server.py` | 暴露 HTTP API、托管 Web 控制台、维护内存任务状态 |
+| **编排层** | `src/honor_agent/orchestrator.py` | 根据任务选择 Agent，顺序执行并记录上下文交接 |
+| **能力层** | `src/honor_agent/github_intelligence.py` | 提供 GitHub 仓库分析能力 |
+| **模型层** | `src/honor_agent/models.py` | 定义请求、任务、Agent、运行轨迹和响应结构 |
+| **验证层** | `tests/`, `.github/workflows/` | 用 pytest、ruff 和 GitHub Actions 保证基础质量 |
+
+### 请求数据流
+
+创建并运行一个多 Agent 任务时，数据流如下：
+
+```text
+用户 / Web 控制台 / Android / SDK
+        │
+        ▼
+POST /api/v1/tasks
+        │
+        ▼
+TaskCreate -> Task -> TASKS 内存表
+        │
+        ▼
+POST /api/v1/tasks/{task_id}/run
+        │
+        ▼
+orchestrate_task(task, AGENTS)
+        │
+        ├── data_analyst 读取任务参数，输出分析发现
+        ├── report_generator 读取分析发现，输出结构化报告
+        └── github_intelligence 读取报告上下文，输出仓库维护建议
+        │
+        ▼
+OrchestrationResult -> TaskResult -> ApiResponse
+```
+
+### 多 Agent 交互模型
+
+编排器当前使用顺序策略 `sequential`。它不是简单地把多个 Agent 名字存在任务里，而是会为每个 Agent 生成一次独立运行记录：
+
+| 字段 | 含义 |
+|------|------|
+| `agent_id` | 当前执行的 Agent ID |
+| `agent_name` | 当前执行的 Agent 名称 |
+| `status` | 当前步骤状态，支持 `completed`、`skipped`、`failed` |
+| `input_summary` | 当前 Agent 接收到的上游上下文摘要 |
+| `output` | 当前 Agent 生成的结构化结果 |
+| `started_at` / `completed_at` | 当前 Agent 的执行时间 |
+
+最终结果会聚合为 `OrchestrationResult`：
+
+```json
+{
+  "task_id": "task_xxx",
+  "status": "completed",
+  "strategy": "sequential",
+  "agent_count": 3,
+  "runs": [],
+  "final_output": {
+    "summary": "Task completed by 3 agent(s) with 0 skipped agent(s).",
+    "agent_sequence": ["data_analyst", "report_generator", "github_intelligence"],
+    "handoffs": [],
+    "latest_output": {}
+  }
+}
+```
+
+### 当前内置 Agent
+
+| Agent ID | 角色 | 输入 | 输出 |
+|----------|------|------|------|
+| `data_analyst` | 数据分析 Agent | 任务名称、描述、优先级、`params.data_source`、`params.date_range` | 分析摘要、发现列表、交接建议 |
+| `report_generator` | 报告生成 Agent | 上游分析发现或任务描述 | 报告标题、执行摘要、要点列表 |
+| `github_intelligence` | 仓库智能 Agent | 上游报告、`params.github_url` 或 `params.extra.github_url` | 仓库维护建议、最终交接说明 |
+
+### 功能边界
+
+当前版本是可运行 MVP，重点是把多端入口、API、任务模型、多 Agent 交互轨迹和 APK 构建跑通。它已经支持本地确定性多 Agent 编排，但还没有接入生产级能力：
+
+- 任务状态目前保存在内存中，服务重启后会清空。
+- Agent 执行逻辑目前是确定性的 Python 函数，不是 LLM 实时推理。
+- GitHub Intelligence 可以读取公开仓库元数据；私有仓库需要配置 `GITHUB_TOKEN`。
+- Android APK 是 debug 包，适合测试安装，不是应用商店发布包。
+- API Key、用户权限、数据库、队列、异步任务和审计日志属于下一阶段。
 
 ---
 
@@ -303,9 +395,14 @@ from honor_agent import HonorAgent
 client = HonorAgent(api_key="your-api-key")
 
 task = client.tasks.create(
-    name="数据分析任务",
-    description="分析销售数据并生成报告",
-    agents=["data_analyst"]
+    name="多智能体分析任务",
+    description="分析销售数据，生成报告，并输出仓库维护建议",
+    agents=["data_analyst", "report_generator", "github_intelligence"],
+    params={
+        "data_source": "sales_db",
+        "date_range": "last_week",
+        "extra": {"github_url": "https://github.com/Theeffortman/HonorAgent"}
+    },
 )
 
 result = client.tasks.run(task_id=task.id)
@@ -316,8 +413,18 @@ print(result.output)
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/tasks \
+  -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-api-key" \
-  -d '{"name": "数据分析任务", "agents": ["data_analyst"]}'
+  -d '{
+    "name": "多智能体分析任务",
+    "description": "分析数据并生成报告",
+    "agents": ["data_analyst", "report_generator", "github_intelligence"],
+    "params": {
+      "data_source": "sales_db",
+      "date_range": "last_week",
+      "extra": {"github_url": "https://github.com/Theeffortman/HonorAgent"}
+    }
+  }'
 ```
 
 ### GitHub Intelligence
