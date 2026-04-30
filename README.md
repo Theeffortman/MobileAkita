@@ -3,7 +3,7 @@
 > 多智能体自进化 AI 协作平台 - 让 AI 助手成为您的数字员工团队
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.0.0-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.1.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/Platform-Cross--Platform-green.svg" alt="Platform">
   <img src="https://img.shields.io/badge/License-MIT-orange.svg" alt="License">
   <img src="https://img.shields.io/badge/Python-3.10+-yellow.svg" alt="Python">
@@ -17,7 +17,7 @@
   <a href="https://github.com/Theeffortman/HonorAgent/releases">
     <img src="https://img.shields.io/github/release/Theeffortman/HonorAgent.svg" alt="Release">
   </a>
-  <img src="https://img.shields.io/badge/coverage-85%25-brightgreen?style=flat" alt="Coverage">
+  <img src="https://img.shields.io/badge/status-MVP-blue?style=flat" alt="Status">
 </p>
 
 ---
@@ -144,15 +144,14 @@ python -m venv venv
 source venv/bin/activate
 
 # 3. 安装依赖
-cd server
-pip install -r requirements.txt
+pip install -e ".[dev]"
 
 # 4. 配置环境变量
 cp .env.example .env
 # 编辑 .env 填入你的 API Keys
 
 # 5. 启动服务
-python start.py
+honor-agent
 ```
 
 ### ⚙️ 配置说明
@@ -178,6 +177,25 @@ OPENAI_API_KEY=sk-your-openai-api-key
 # 健康检查
 curl http://localhost:8000/health
 ```
+
+### Android APK
+
+仓库包含原生 Android 客户端：
+
+```txt
+android/
+```
+
+本地构建：
+
+```bash
+cd android
+gradle :app:assembleDebug
+```
+
+也可以通过 GitHub Actions 的 `Android APK` workflow 自动构建并下载 `app-debug.apk`。
+
+详细部署和使用步骤见 [Android 部署指南](./docs/ANDROID.md)。
 
 ---
 
@@ -208,6 +226,16 @@ curl -X POST http://localhost:8000/api/v1/tasks \
   -d '{"name": "数据分析任务", "agents": ["data_analyst"]}'
 ```
 
+### GitHub Intelligence
+
+```bash
+curl -X POST http://localhost:8000/api/v1/github/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://github.com/Theeffortman/HonorAgent", "include_remote": true}'
+```
+
+该能力会把 GitHub 仓库元数据转成健康分、风险信号和可执行任务建议，可作为后续多 Agent 自动维护仓库的入口。
+
 ---
 
 ## 📂 项目结构
@@ -221,13 +249,12 @@ HonorAgent/
 │   ├── DEPLOYMENT.md             # 部署指南
 │   ├── CONTRIBUTING.md           # 贡献指南
 │   └── CHANGELOG.md              # 更新日志
-├── server/                        # 服务端代码 (Python)
-│   ├── evolution_engine/         # Agent 进化引擎
-│   ├── collaboration/            # 多 Agent 协作
-│   ├── workflow_engine/          # 工作流引擎
-│   ├── knowledge_engine/         # 知识引擎
-│   ├── action/                   # 动作执行引擎
-│   └── ...
+├── src/honor_agent/              # Python SDK 与最小 API 服务
+│   ├── client.py                 # 异步 SDK 客户端
+│   ├── models.py                 # Pydantic 数据模型
+│   └── server.py                 # FastAPI 应用
+├── tests/                        # 自动化测试
+├── .github/workflows/            # CI 配置
 ├── examples/                     # 示例代码
 │   ├── python/
 │   └── javascript/
@@ -240,9 +267,9 @@ HonorAgent/
 
 | 指标 | 数值 |
 |------|------|
-| **核心引擎** | 16 |
-| **Python 文件** | 142 |
-| **测试覆盖** | 85%+ |
+| **可运行 API** | FastAPI MVP |
+| **Python 包** | `honor_agent` |
+| **测试** | pytest |
 
 ---
 

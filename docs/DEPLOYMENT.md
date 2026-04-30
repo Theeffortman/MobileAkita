@@ -125,8 +125,7 @@ source venv/bin/activate  # Linux/Mac
 ### 3. 安装依赖
 
 ```bash
-cd server
-pip install -r requirements.txt
+pip install -e ".[dev]"
 ```
 
 ### 4. 配置环境变量
@@ -140,10 +139,10 @@ nano .env
 
 ```bash
 # 开发模式
-python start.py --dev
+uvicorn honor_agent.server:app --reload
 
 # 生产模式
-python start.py
+honor-agent
 ```
 
 ### 6. 验证安装

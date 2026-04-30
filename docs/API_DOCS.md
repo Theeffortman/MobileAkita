@@ -131,6 +131,35 @@ Content-Type: application/json
 
 ---
 
+## GitHub Intelligence
+
+### 分析 GitHub 仓库
+
+```http
+POST /api/v1/github/analyze
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "url": "https://github.com/Theeffortman/HonorAgent",
+  "include_remote": true
+}
+```
+
+返回内容包括：
+
+| 字段 | 说明 |
+|------|------|
+| health_score | 0-100 仓库健康分 |
+| signals | 正向信号，如 license、topics、社区活跃度 |
+| risks | 风险信号，如缺少 license、issue 积压 |
+| suggested_tasks | 可转成 HonorAgent 任务的建议 |
+| metadata | GitHub API 返回的仓库元数据摘要 |
+
+`include_remote=false` 时只解析 URL，不访问 GitHub API，适合离线测试。
+
+---
+
 ## 工作流
 
 ### 创建工作流
