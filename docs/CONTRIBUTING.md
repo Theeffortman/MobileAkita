@@ -61,9 +61,7 @@ python -m venv venv
 source venv/bin/activate
 
 # 5. 安装依赖
-cd server
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 
 # 6. 安装预提交钩子
 pre-commit install
@@ -163,7 +161,7 @@ Closes #123
 ```bash
 pytest tests/ -v
 pytest tests/test_collaboration.py -v
-pytest tests/ --cov=server --cov-report=html
+pytest tests/ --cov=honor_agent --cov-report=html
 ```
 
 ---
@@ -173,7 +171,7 @@ pytest tests/ --cov=server --cov-report=html
 | 文档 | 位置 | 说明 |
 |------|------|------|
 | README | 根目录 | 项目总览 |
-| API 文档 | docs/API.md | API 接口文档 |
+| API 文档 | docs/API_DOCS.md | API 接口文档 |
 | 架构文档 | docs/ARCHITECTURE.md | 系统架构 |
 | 部署指南 | docs/DEPLOYMENT.md | 部署说明 |
 
