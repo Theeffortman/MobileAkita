@@ -154,6 +154,14 @@ cp .env.example .env
 honor-agent
 ```
 
+服务启动后打开可视化控制台：
+
+```txt
+http://localhost:8000/
+```
+
+控制台包含健康检查、Agent 列表、任务创建、任务列表、任务详情、任务运行和 GitHub 仓库分析。
+
 ### ⚙️ 配置说明
 
 编辑 `.env` 文件配置必要参数：

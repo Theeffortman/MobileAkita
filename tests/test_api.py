@@ -15,6 +15,18 @@ def test_health() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_dashboard_serves_static_console() -> None:
+    client = TestClient(app)
+
+    response = client.get("/")
+    css_response = client.get("/static/app.css")
+
+    assert response.status_code == 200
+    assert "Honor Agent 控制台" in response.text
+    assert css_response.status_code == 200
+    assert "text/css" in css_response.headers["content-type"]
+
+
 def test_create_get_and_run_task() -> None:
     client = TestClient(app)
     create_response = client.post(

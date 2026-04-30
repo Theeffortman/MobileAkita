@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import uvicorn
 import httpx
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from .github_intelligence import build_repo_insight, fetch_github_repo_metadata, parse_github_repo_url
 from .models import AgentInfo, ApiResponse, GitHubRepoRequest, Task, TaskCreate, TaskResult
@@ -17,6 +20,9 @@ app = FastAPI(
     description="Minimal runnable API for multi-agent task orchestration.",
     version="0.1.0",
 )
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 TASKS: dict[str, Task] = {}
 AGENTS = [
@@ -48,6 +54,11 @@ def ok(data: Any = None, message: str = "操作成功") -> ApiResponse:
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "honor-agent"}
+
+
+@app.get("/", include_in_schema=False)
+async def dashboard() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.post("/api/v1/tasks", response_model=ApiResponse, status_code=status.HTTP_201_CREATED)
