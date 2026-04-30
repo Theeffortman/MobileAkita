@@ -1,10 +1,12 @@
 from fastapi.testclient import TestClient
 
-from honor_agent.server import TASKS, app
+from honor_agent.server import EVOLUTION_REPORTS, TASK_RESULTS, TASKS, app
 
 
 def setup_function() -> None:
     TASKS.clear()
+    TASK_RESULTS.clear()
+    EVOLUTION_REPORTS.clear()
 
 
 def test_health() -> None:
@@ -87,6 +89,16 @@ def test_run_task_orchestrates_multiple_agents_with_handoffs() -> None:
     assert output["runs"][1]["input_summary"].startswith("Received context from data_analyst")
     assert output["runs"][2]["input_summary"].startswith("Received context from report_generator")
     assert len(output["final_output"]["handoffs"]) == 3
+    assert output["evolution"]["overall_score"] >= 65
+    assert output["evolution"]["readiness"] in {"usable", "strong"}
+
+    result_response = client.get(f"/api/v1/tasks/{task['id']}/result")
+    evolution_response = client.get(f"/api/v1/tasks/{task['id']}/evolution")
+
+    assert result_response.status_code == 200
+    assert result_response.json()["data"]["task_id"] == task["id"]
+    assert evolution_response.status_code == 200
+    assert evolution_response.json()["data"]["agent_reports"][0]["agent_id"] == "data_analyst"
 
 
 def test_run_task_skips_unknown_agents_in_trace() -> None:
@@ -104,6 +116,19 @@ def test_run_task_skips_unknown_agents_in_trace() -> None:
     assert output["agent_count"] == 2
     assert output["runs"][0]["status"] == "skipped"
     assert output["runs"][1]["status"] == "completed"
+    assert output["evolution"]["risks"]
+
+
+def test_task_result_and_evolution_return_404_before_run() -> None:
+    client = TestClient(app)
+    create_response = client.post("/api/v1/tasks", json={"name": "Not run yet"})
+    task = create_response.json()["data"]
+
+    result_response = client.get(f"/api/v1/tasks/{task['id']}/result")
+    evolution_response = client.get(f"/api/v1/tasks/{task['id']}/evolution")
+
+    assert result_response.status_code == 404
+    assert evolution_response.status_code == 404
 
 
 def test_list_agents() -> None:

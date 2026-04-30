@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .github_intelligence import build_repo_insight, fetch_github_repo_metadata, parse_github_repo_url
-from .models import AgentInfo, ApiResponse, GitHubRepoRequest, Task, TaskCreate, TaskResult
+from .models import AgentInfo, ApiResponse, EvolutionReport, GitHubRepoRequest, Task, TaskCreate, TaskResult
 from .orchestrator import orchestrate_task
 
 app = FastAPI(
@@ -26,6 +26,8 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 TASKS: dict[str, Task] = {}
+TASK_RESULTS: dict[str, TaskResult] = {}
+EVOLUTION_REPORTS: dict[str, EvolutionReport] = {}
 AGENTS = [
     AgentInfo(
         id="data_analyst",
@@ -99,7 +101,26 @@ async def run_task(task_id: str) -> ApiResponse:
         status=task.status,
         output=orchestration.model_dump(mode="json"),
     )
+    TASK_RESULTS[task.id] = result
+    if orchestration.evolution:
+        EVOLUTION_REPORTS[task.id] = orchestration.evolution
     return ok(result.model_dump(mode="json"), "任务执行完成")
+
+
+@app.get("/api/v1/tasks/{task_id}/result", response_model=ApiResponse)
+async def get_task_result(task_id: str) -> ApiResponse:
+    result = TASK_RESULTS.get(task_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Task result not found")
+    return ok(result.model_dump(mode="json"))
+
+
+@app.get("/api/v1/tasks/{task_id}/evolution", response_model=ApiResponse)
+async def get_task_evolution(task_id: str) -> ApiResponse:
+    report = EVOLUTION_REPORTS.get(task_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Evolution report not found")
+    return ok(report.model_dump(mode="json"))
 
 
 @app.get("/api/v1/agents", response_model=ApiResponse)

@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from .models import AgentInfo, GitHubRepoInsight, Task, TaskCreate, TaskParams, TaskResult
+from .models import AgentInfo, EvolutionReport, GitHubRepoInsight, Task, TaskCreate, TaskParams, TaskResult
 
 
 class TasksClient:
@@ -43,6 +43,14 @@ class TasksClient:
     async def run(self, task_id: str) -> TaskResult:
         data = await self._client._request("POST", f"/api/v1/tasks/{task_id}/run")
         return TaskResult.model_validate(data)
+
+    async def result(self, task_id: str) -> TaskResult:
+        data = await self._client._request("GET", f"/api/v1/tasks/{task_id}/result")
+        return TaskResult.model_validate(data)
+
+    async def evolution(self, task_id: str) -> EvolutionReport:
+        data = await self._client._request("GET", f"/api/v1/tasks/{task_id}/evolution")
+        return EvolutionReport.model_validate(data)
 
 
 class AgentsClient:

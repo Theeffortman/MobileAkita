@@ -64,6 +64,29 @@ class AgentRun(BaseModel):
     completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class AgentEvolution(BaseModel):
+    """Quality review and improvement plan for one agent run."""
+
+    agent_id: str
+    score: int
+    strengths: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    improvement_actions: list[str] = Field(default_factory=list)
+
+
+class EvolutionReport(BaseModel):
+    """Post-run self-improvement report generated from an orchestration trace."""
+
+    task_id: str
+    overall_score: int
+    readiness: Literal["needs_attention", "usable", "strong"]
+    strengths: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    recommended_next_actions: list[str] = Field(default_factory=list)
+    agent_reports: list[AgentEvolution] = Field(default_factory=list)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class OrchestrationResult(BaseModel):
     """Full multi-agent execution trace for a task."""
 
@@ -73,6 +96,7 @@ class OrchestrationResult(BaseModel):
     agent_count: int
     runs: list[AgentRun] = Field(default_factory=list)
     final_output: dict[str, Any] = Field(default_factory=dict)
+    evolution: EvolutionReport | None = None
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

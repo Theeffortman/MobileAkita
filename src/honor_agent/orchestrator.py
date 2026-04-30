@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from .evolution import build_evolution_report
 from .models import AgentInfo, AgentRun, OrchestrationResult, Task
 
 
@@ -169,7 +170,7 @@ def orchestrate_task(task: Task, available_agents: list[AgentInfo]) -> Orchestra
         "latest_output": context["latest_output"],
     }
 
-    return OrchestrationResult(
+    result = OrchestrationResult(
         task_id=task.id,
         status="completed",
         agent_count=len(runs),
@@ -178,3 +179,5 @@ def orchestrate_task(task: Task, available_agents: list[AgentInfo]) -> Orchestra
         started_at=started_at,
         completed_at=datetime.now(timezone.utc),
     )
+    result.evolution = build_evolution_report(result)
+    return result
