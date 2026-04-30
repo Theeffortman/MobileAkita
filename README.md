@@ -28,41 +28,107 @@ Honor Agent 是一款**多智能体自进化 AI 协作平台**，通过模拟人
 
 **核心理念**：`AI 协作自动化，让工作更智能`
 
+当前仓库已经从概念文档升级为可运行的 MVP：包含 FastAPI 后端、Python SDK、Web 可视化控制台、GitHub 仓库智能分析、Android 客户端和 GitHub Actions 自动打包流程。
+
 ### 核心优势
 
 | 优势 | 说明 |
 |------|------|
-| 🤖 **多 Agent 协作** | 50+ 专业 AI Agent 协同工作，并行处理复杂任务 |
-| 🧠 **自进化能力** | AI 自动学习操作路径，适配环境变化 |
-| 🔌 **全平台支持** | 支持 Web、Mobile、Desktop 全平台自动化 |
-| 🎯 **开箱即用** | 丰富的预设 Agent，开箱即用 |
-| 🔒 **隐私优先** | 端侧处理，数据最小化收集 |
+| 🤖 **多 Agent 协作入口** | 通过统一任务模型把不同 Agent 组合进同一个任务 |
+| 🧠 **仓库智能分析** | 读取 GitHub 仓库元数据，生成健康分、风险点和维护建议 |
+| 🔌 **Web + Android 双端** | Web 控制台用于桌面管理，Android APK 用于移动端操作 |
+| 🎯 **开箱即用 API** | 安装后即可启动 FastAPI 服务并调用任务、Agent 和 GitHub 分析接口 |
+| 🔒 **本地优先** | 默认任务数据保存在进程内，方便本地开发和二次扩展 |
 
 ---
 
 ## ✨ 功能特性
 
+### ✅ 当前已实现
+
+| 功能 | 说明 | 入口 |
+|------|------|------|
+| **Web 可视化控制台** | 在浏览器里完成健康检查、Agent 查看、任务创建、任务运行和 GitHub 分析 | `http://localhost:8000/` |
+| **任务管理 API** | 支持创建任务、列出任务、查看任务详情、运行任务 | `/api/v1/tasks` |
+| **Agent 能力中心** | 内置 Data Analyst、Report Generator、GitHub Intelligence 三类 Agent 元数据 | `/api/v1/agents` |
+| **GitHub Intelligence** | 分析 GitHub 仓库，输出健康分、风险信号、正向信号和建议任务 | `/api/v1/github/analyze` |
+| **Python SDK** | 通过 `HonorAgent` 客户端调用任务和 GitHub 分析能力 | `src/honor_agent/client.py` |
+| **Android 客户端** | 原生 Android App，可连接后端、分析仓库、创建并运行演示任务 | `android/` |
+| **自动化测试** | pytest 覆盖 API、SDK、GitHub 分析和 Web 控制台入口 | `tests/` |
+| **CI / APK 打包** | GitHub Actions 自动运行测试并构建 debug APK | `.github/workflows/` |
+
+### 🖥️ Web 可视化控制台
+
+控制台随后端服务一起启动，不需要单独安装 Node.js 或前端构建工具。打开 `http://localhost:8000/` 后可以完成：
+
+- 检查后端服务是否在线。
+- 查看当前可用 Agent 和每个 Agent 的能力标签。
+- 创建任务并选择参与任务的 Agent。
+- 查看任务列表、任务详情和任务状态。
+- 一键运行任务并查看执行结果。
+- 输入 GitHub 仓库地址，生成仓库健康分析结果。
+- 查看最近一次 API 响应日志，方便调试。
+
+### 🧩 后端 API
+
+Honor Agent 后端基于 FastAPI，当前提供一套最小但完整的任务编排接口：
+
+| 接口 | 方法 | 功能 |
+|------|------|------|
+| `/health` | `GET` | 服务健康检查 |
+| `/api/v1/agents` | `GET` | 获取可用 Agent 列表 |
+| `/api/v1/tasks` | `POST` | 创建任务 |
+| `/api/v1/tasks` | `GET` | 获取任务列表 |
+| `/api/v1/tasks/{task_id}` | `GET` | 获取任务详情 |
+| `/api/v1/tasks/{task_id}/run` | `POST` | 运行任务 |
+| `/api/v1/github/analyze` | `POST` | 分析 GitHub 仓库 |
+
+### 📱 Android APK
+
+Android 客户端是原生 Java 实现，主要用于移动端连接 Honor Agent 后端。当前支持：
+
+- 配置 API Base URL 和 API Key。
+- 检查后端健康状态。
+- 输入 GitHub 仓库地址并触发智能分析。
+- 创建并运行演示任务。
+- 在手机端直接查看 JSON 响应结果。
+
+APK 可以通过 GitHub Actions 的 `Android APK` workflow 自动构建。构建完成后下载 `honor-agent-debug-apk` artifact，解压即可得到 `app-debug.apk`。
+
+### 🧠 GitHub Intelligence
+
+GitHub Intelligence 是项目当前的核心扩展能力之一。它会解析仓库 URL，并在允许远程访问时读取 GitHub 仓库元数据，然后生成：
+
+- 仓库基础信息。
+- 健康分 `health_score`。
+- 正向信号 `signals`。
+- 风险项 `risks`。
+- 可执行维护建议 `suggested_tasks`。
+- 原始元数据摘要 `metadata`。
+
+这个能力可以作为后续“自动维护仓库 Agent”的入口，例如自动补 README、补 License、检查 CI、生成 Issue、规划重构任务等。
+
 ### 🔧 核心模块
 
 | 模块 | 描述 |
 |------|------|
-| **进化引擎** | Agent 自进化、自修复、自评估能力 |
-| **协作引擎** | 多 Agent 团队构建、任务调度、结果聚合 |
-| **工作流引擎** | 可视化流程编排、并行/串行执行 |
-| **知识引擎** | RAG 向量检索、知识图谱构建 |
-| **动作引擎** | 动作规划、执行、优化、监控 |
-| **优化引擎** | 参数调优、架构优化、报告生成 |
+| **任务编排核心** | 用统一 Task 模型描述任务名称、描述、Agent、参数、优先级和状态 |
+| **Agent 注册中心** | 暴露可用 Agent 的 ID、名称、描述和能力标签 |
+| **执行模拟器** | 当前 MVP 可将任务从 `created` 推进到 `completed` 并返回执行摘要 |
+| **GitHub 分析器** | 把 GitHub 仓库元数据转成健康分和维护建议 |
+| **Web 控制台** | 提供无需前端构建的浏览器操作界面 |
+| **移动端客户端** | Android App 连接同一套后端 API |
 
-### 📊 企业级功能
+### 🗺️ 规划中的能力
 
 | 功能 | 说明 |
 |------|------|
-| **安全引擎** | 权限管理、异常检测、审计日志 |
-| **告警引擎** | 规则配置、实时告警、报告生成 |
-| **服务网格** | 流量管理、故障注入、可观测性 |
-| **A/B 测试** | 实验管理、流量分配、效果分析 |
-| **用户分析** | 行为追踪、漏斗分析、用户画像 |
-| **特性开关** | 动态配置、热更新、灰度发布 |
+| **持久化存储** | 将当前内存任务存储升级为 SQLite / PostgreSQL |
+| **真实 Agent 执行器** | 接入 LLM、工具调用、浏览器控制、文件操作等真实执行能力 |
+| **权限系统** | API Key、用户、角色、审计日志和操作授权 |
+| **工作流编排** | 支持多步骤 DAG、并行执行、失败重试和结果聚合 |
+| **知识库能力** | 接入文档索引、RAG 检索和长期记忆 |
+| **自动仓库维护** | 基于 GitHub Intelligence 自动创建 Issue、PR 和修复建议 |
 
 ---
 
@@ -259,8 +325,11 @@ HonorAgent/
 │   └── CHANGELOG.md              # 更新日志
 ├── src/honor_agent/              # Python SDK 与最小 API 服务
 │   ├── client.py                 # 异步 SDK 客户端
+│   ├── github_intelligence.py    # GitHub 仓库分析能力
 │   ├── models.py                 # Pydantic 数据模型
-│   └── server.py                 # FastAPI 应用
+│   ├── server.py                 # FastAPI 应用
+│   └── static/                   # Web 可视化控制台
+├── android/                      # 原生 Android APK 客户端
 ├── tests/                        # 自动化测试
 ├── .github/workflows/            # CI 配置
 ├── examples/                     # 示例代码
@@ -277,6 +346,8 @@ HonorAgent/
 |------|------|
 | **可运行 API** | FastAPI MVP |
 | **Python 包** | `honor_agent` |
+| **Web 控制台** | 内置静态控制台 |
+| **Android APK** | GitHub Actions 自动打包 |
 | **测试** | pytest |
 
 ---
